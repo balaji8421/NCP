@@ -1,15 +1,49 @@
-cmake_minimum_required(VERSION 3.10)
+trigger:
+  branches:
+    include:
+      - main
 
-project(googletest-download NONE)
+pool:
+  name: 'Default'  # Replace with your self-hosted agent pool name
 
-include(ExternalProject)
-ExternalProject_Add(googletest
-    GIT_REPOSITORY    https://github.com/google/googletest.git
-    GIT_TAG           release-1.11.0
-    SOURCE_DIR        "${CMAKE_BINARY_DIR}/googletest-src"
-    BINARY_DIR        "${CMAKE_BINARY_DIR}/googletest-build"
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND     ""
-    INSTALL_COMMAND   ""
-    TEST_COMMAND      ""
-)
+variables:
+  buildConfiguration: 'Release'
+  buildDirectory: 'build'
+  cppcheckReport: 'cppcheck-report.xml'  # File to store cppcheck results
+
+steps:
+- checkout: self  # Step 1: Checkout the code
+
+- script: |
+    cppcheck --enable=all --inconclusive --xml --xml-version=2 . 2> $(cppcheckReport)
+  displayName: 'Run Cppcheck (Static Code Analysis) and Generate XML Report'
+
+- task: PublishCodeAnalysisResults@1  # Step 2: Publish cppcheck results
+  inputs:
+    tool: 'Cppcheck'
+    summaryFileLocation: '$(cppcheckReport)'
+
+- script: |
+    rm -rf $(buildDirectory)  # Step 3: Clean previous builds
+    mkdir -p $(buildDirectory)
+    cd $(buildDirectory)
+    cmake ..
+    cmake --build . --config $(buildConfiguration)
+  displayName: 'CMake Clean and Build'
+
+- script: |
+    ./$(buildDirectory)/hello  # Run the executable
+  displayName: 'Run Hello World'  # Step 4: Run the built application
+
+- task: CTest@1
+  inputs:
+    workingDirectory: '$(Build.SourcesDirectory)/$(buildDirectory)'
+    options: '--output-on-failure'
+  displayName: 'Run Unit Tests'  # Step 5: Run tests (if any)
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathtoPublish: '$(Build.SourcesDirectory)/$(buildDirectory)'
+    artifactName: 'drop'
+    publishLocation: 'Container'
+  displayName: 'Publish Build Artifacts'  # Step 6: Publish artifacts (if needed)
