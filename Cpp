@@ -1,49 +1,22 @@
-trigger:
-  branches:
-    include:
-      - main
+# Download and unpack GoogleTest at configure time
+include(FetchContent)
 
-pool:
-  name: 'Default'  # Replace with your self-hosted agent pool name
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/refs/tags/release-1.11.0.zip
+)
 
-variables:
-  buildConfiguration: 'Release'
-  buildDirectory: 'build'
-  cppcheckReport: 'cppcheck-report.xml'  # File to store cppcheck results
+# Prevent GoogleTest from overriding our compiler/linker options
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
-steps:
-- checkout: self  # Step 1: Checkout the code
+# Fetch and add googletest
+FetchContent_MakeAvailable(googletest)
 
-- script: |
-    cppcheck --enable=all --inconclusive --xml --xml-version=2 . 2> $(cppcheckReport)
-  displayName: 'Run Cppcheck (Static Code Analysis) and Generate XML Report'
+# Now simply link against gtest or gtest_main as needed. Eg
+add_executable(test_hello test_hello.cpp)
+target_link_libraries(test_hello gtest_main)
 
-- task: PublishCodeAnalysisResults@1  # Step 2: Publish cppcheck results
-  inputs:
-    tool: 'Cppcheck'
-    summaryFileLocation: '$(cppcheckReport)'
+# Include the main project source directory
+target_include_directories(test_hello PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
 
-- script: |
-    rm -rf $(buildDirectory)  # Step 3: Clean previous builds
-    mkdir -p $(buildDirectory)
-    cd $(buildDirectory)
-    cmake ..
-    cmake --build . --config $(buildConfiguration)
-  displayName: 'CMake Clean and Build'
-
-- script: |
-    ./$(buildDirectory)/hello  # Run the executable
-  displayName: 'Run Hello World'  # Step 4: Run the built application
-
-- task: CTest@1
-  inputs:
-    workingDirectory: '$(Build.SourcesDirectory)/$(buildDirectory)'
-    options: '--output-on-failure'
-  displayName: 'Run Unit Tests'  # Step 5: Run tests (if any)
-
-- task: PublishBuildArtifacts@1
-  inputs:
-    pathtoPublish: '$(Build.SourcesDirectory)/$(buildDirectory)'
-    artifactName: 'drop'
-    publishLocation: 'Container'
-  displayName: 'Publish Build Artifacts'  # Step 6: Publish artifacts (if needed)
+add_test(NAME test_hello COMMAND test_hello)
