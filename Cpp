@@ -1,22 +1,39 @@
-# Enable code coverage if CMAKE_BUILD_TYPE is set to 'Coverage'
-if(CMAKE_BUILD_TYPE MATCHES Coverage)
-    message(STATUS "Code Coverage enabled")
-    # Set the compiler flags for coverage
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
-endif()
+# Use an official GCC compiler image as a parent image
+FROM gcc:11
+
+# Set the working directory inside the container
+WORKDIR /usr/src/app
+
+# Copy the current directory contents into the container at /usr/src/app
+COPY . .
+
+# Install CMake
+RUN apt-get update && apt-get install -y cmake
+
+# Create a build directory and compile the application
+RUN mkdir -p build && cd build && cmake .. && make
+
+# Command to run your executable
+CMD ["./build/hello_world"]
 
 
-- script: |
-    lcov --capture --directory . --output-file coverage.info
-    lcov --remove coverage.info '/usr/*' '*/test/*' '*/googletest/*' --output-file coverage_filtered.info
-    genhtml coverage_filtered.info --output-directory coverage_report
-  displayName: 'Generate Code Coverage Report'
 
 
-- task: PublishBuildArtifacts@1
+# Step 3: Build Docker image only if all tests pass
+- task: Docker@2
+  condition: succeeded()
   inputs:
-    pathtoPublish: '$(Build.SourcesDirectory)/coverage_report'
-    artifactName: 'coverage_report'
-    publishLocation: 'Container'
-  displayName: 'Publish Code Coverage Report'
+    containerRegistry: '<your-container-registry-service-connection>'
+    repository: '$(dockerImageName)'
+    command: 'buildAndPush'
+    Dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
+    tags: |
+      $(Build.BuildId)
+
+# Optional: Run the Docker image to verify it works
+- script: |
+    docker run --rm $(dockerImageName):$(Build.BuildId)
+  condition: succeeded()
+  displayName: 'Run Docker Image'
+
+
