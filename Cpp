@@ -1,39 +1,15 @@
-# Use an official GCC compiler image as a parent image
-FROM gcc:11
+wget https://releases.jfrog.io/artifactory/artifactory-pro/debs/jfrog-artifactory-oss-7.x.x.deb
 
-# Set the working directory inside the container
-WORKDIR /usr/src/app
+sudo dpkg -i jfrog-artifactory-oss-7.x.x.deb
 
-# Copy the current directory contents into the container at /usr/src/app
-COPY . .
+sudo systemctl start artifactory.service
 
-# Install CMake
-RUN apt-get update && apt-get install -y cmake
-
-# Create a build directory and compile the application
-RUN mkdir -p build && cd build && cmake .. && make
-
-# Command to run your executable
-CMD ["./build/hello_world"]
+http://<your_ubuntu_machine_ip>:8081/artifactory
 
 
 
-
-# Step 3: Build Docker image only if all tests pass
-- task: Docker@2
-  condition: succeeded()
-  inputs:
-    containerRegistry: '<your-container-registry-service-connection>'
-    repository: '$(dockerImageName)'
-    command: 'buildAndPush'
-    Dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
-    tags: |
-      $(Build.BuildId)
-
-# Optional: Run the Docker image to verify it works
-- script: |
-    docker run --rm $(dockerImageName):$(Build.BuildId)
-  condition: succeeded()
-  displayName: 'Run Docker Image'
+curl -fL https://getcli.jfrog.io | sh
+sudo mv jfrog /usr/local/bin/
 
 
+jfrog rt config
