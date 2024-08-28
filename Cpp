@@ -1,15 +1,16 @@
-wget https://releases.jfrog.io/artifactory/artifactory-pro/debs/jfrog-artifactory-oss-7.x.x.deb
+# Step 3: Build Docker image only if all tests pass
+- task: Docker@2
+  condition: succeeded()
+  inputs:
+    containerRegistry: '<your-container-registry-service-connection>'
+    repository: '$(dockerImageName)'
+    command: 'buildAndPush'
+    Dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
+    tags: |
+      $(Build.BuildId)
 
-sudo dpkg -i jfrog-artifactory-oss-7.x.x.deb
-
-sudo systemctl start artifactory.service
-
-http://<your_ubuntu_machine_ip>:8081/artifactory
-
-
-
-curl -fL https://getcli.jfrog.io | sh
-sudo mv jfrog /usr/local/bin/
-
-
-jfrog rt config
+# Optional: Run the Docker image to verify it works
+- script: |
+    docker run --rm $(dockerImageName):$(Build.BuildId)
+  condition: succeeded()
+  displayName: 'Run Docker Image'
