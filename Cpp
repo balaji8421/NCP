@@ -5,3 +5,7 @@
     namespace: 'default'
     command: 'apply'
     arguments: '-f k8s/deployment.yaml -f k8s/service.yaml'
+
+
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
