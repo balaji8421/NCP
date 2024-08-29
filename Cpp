@@ -42,3 +42,8 @@ metadata:
   annotations:
     kubernetes.io/service-account.name: azure-devops-sa
 type: kubernetes.io/service-account-token
+
+SECRET_NAME=$(kubectl get secret -n default | grep azure-devops-sa-secret | awk '{print $1}')
+kubectl get secret $SECRET_NAME -o jsonpath='{.data.token}' | base64 --decode
+
+kubectl describe serviceaccount azure-devops-sa -n default
