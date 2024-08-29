@@ -34,3 +34,11 @@ subjects:
 
 SECRET_NAME=$(kubectl get serviceaccount azure-devops-sa -o jsonpath='{.secrets[0].name}')
 kubectl get secret $SECRET_NAME -o jsonpath='{.data.token}' | base64 --decode
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azure-devops-sa-secret
+  annotations:
+    kubernetes.io/service-account.name: azure-devops-sa
+type: kubernetes.io/service-account-token
