@@ -1,16 +1,20 @@
-# Step 3: Build Docker image only if all tests pass
-- task: Docker@2
-  condition: succeeded()
-  inputs:
-    containerRegistry: '<your-container-registry-service-connection>'
-    repository: '$(dockerImageName)'
-    command: 'buildAndPush'
-    Dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
-    tags: |
-      $(Build.BuildId)
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates curl
+sudo curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+sudo bash -c 'cat <<EOF >/etc/apt/sources.list.d/kubernetes.list
+deb https://apt.kubernetes.io/ kubernetes-xenial main
+EOF'
+sudo apt-get update
+sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
 
-# Optional: Run the Docker image to verify it works
-- script: |
-    docker run --rm $(dockerImageName):$(Build.BuildId)
-  condition: succeeded()
-  displayName: 'Run Docker Image'
+
+sudo kubeadm init --pod-network-cidr=192.168.0.0/16
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
+kubectl taint nodes --all node-role.kubernetes.io/control-plane-
