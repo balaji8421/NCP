@@ -1,20 +1,42 @@
-sudo apt-get update
-sudo apt-get install -y apt-transport-https ca-certificates curl
-sudo curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-sudo bash -c 'cat <<EOF >/etc/apt/sources.list.d/kubernetes.list
-deb https://apt.kubernetes.io/ kubernetes-xenial main
-EOF'
-sudo apt-get update
-sudo apt-get install -y kubelet kubeadm kubectl
-sudo apt-mark hold kubelet kubeadm kubectl
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cpp-app-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cpp-app
+  template:
+    metadata:
+      labels:
+        app: cpp-app
+    spec:
+      containers:
+      - name: cpp-app-container
+        image: <your-dockerhub-username>/cpp-app:latest  # Replace with your Docker Hub image
+        ports:
+        - containerPort: 8080
 
 
-sudo kubeadm init --pod-network-cidr=192.168.0.0/16
 
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
+apiVersion: v1
+kind: Service
+metadata:
+  name: cpp-app-service
+spec:
+  type: NodePort  # This will expose your service on a port on your local machine
+  selector:
+    app: cpp-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+      nodePort: 30007  # Kubernetes will expose your service on this port
 
-kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
 
-kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+# Step 2: Deploy to Kubernetes
+- script: |
+    kubectl apply -f k8s/deployment.yaml
+    kubectl apply -f k8s/service.yaml
+  displayName: 'Deploy to Kubernetes'
