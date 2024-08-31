@@ -1,49 +1,18 @@
-- task: Kubernetes@1
-  inputs:
-    connectionType: 'Kubernetes Service Connection'
-    kubernetesServiceEndpoint: '<your-service-connection-name>'
-    namespace: 'default'
-    command: 'apply'
-    arguments: '-f k8s/deployment.yaml -f k8s/service.yaml
+# Stage 1: Build
+FROM gcc:latest as builder
+WORKDIR /app
 
+# Copy only necessary files for dependencies and build
+COPY CMakeLists.txt ./
+COPY src/ ./src/
+RUN cmake . && make
 
+# Stage 2: Run
+FROM alpine:latest
+WORKDIR /app
 
-curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+# Copy the built executable from the builder stage
+COPY --from=builder /app/myapp .
 
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: azure-devops-sa
-  namespace: default
-
-
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: azure-devops-admin
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-admin
-subjects:
-- kind: ServiceAccount
-  name: azure-devops-sa
-  namespace: default
-
-
-SECRET_NAME=$(kubectl get serviceaccount azure-devops-sa -o jsonpath='{.secrets[0].name}')
-kubectl get secret $SECRET_NAME -o jsonpath='{.data.token}' | base64 --decode
-
-apiVersion: v1
-kind: Secret
-metadata:
-  name: azure-devops-sa-secret
-  annotations:
-    kubernetes.io/service-account.name: azure-devops-sa
-type: kubernetes.io/service-account-token
-
-SECRET_NAME=$(kubectl get secret -n default | grep azure-devops-sa-secret | awk '{print $1}')
-kubectl get secret $SECRET_NAME -o jsonpath='{.data.token}' | base64 --decode
-
-kubectl describe serviceaccount azure-devops-sa -n default
+# Run the application
+CMD ["./myapp"]
