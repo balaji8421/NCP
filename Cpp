@@ -1,18 +1,26 @@
 # Stage 1: Build
-FROM gcc:latest as builder
-WORKDIR /app
+FROM gcc:11 as builder
 
-# Copy only necessary files for dependencies and build
-COPY CMakeLists.txt ./
-COPY src/ ./src/
-RUN cmake . && make
+# Set the working directory
+WORKDIR /usr/src/app
 
-# Stage 2: Run
-FROM alpine:latest
-WORKDIR /app
+# Install dependencies
+RUN apt-get update && apt-get install -y cmake
 
-# Copy the built executable from the builder stage
-COPY --from=builder /app/myapp .
+# Copy the source code
+COPY . .
 
-# Run the application
-CMD ["./myapp"]
+# Create a build directory and compile the application
+RUN mkdir -p build && cd build && cmake .. && make
+
+# Stage 2: Runtime
+FROM debian:bullseye-slim
+
+# Set the working directory
+WORKDIR /usr/src/app
+
+# Copy the compiled binary from the builder stage
+COPY --from=builder /usr/src/app/build/hello_world .
+
+# Run the binary
+CMD ["./hello_world"]
