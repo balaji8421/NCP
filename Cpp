@@ -1,26 +1,77 @@
-# Stage 1: Build
-FROM gcc:11 as builder
+#ifndef HELLO_H
+#define HELLO_H
 
-# Set the working directory
-WORKDIR /usr/src/app
+#include <string>
 
-# Install dependencies
-RUN apt-get update && apt-get install -y cmake
+class hello {
+public:
+    hello();
+    ~hello();
 
-# Copy the source code
-COPY . .
+    void run();
+    bool processInput(const std::string &input);
+};
 
-# Create a build directory and compile the application
-RUN mkdir -p build && cd build && cmake .. && make
+#endif // HELLO_H
 
-# Stage 2: Runtime
-FROM debian:bullseye-slim
 
-# Set the working directory
-WORKDIR /usr/src/app
+#include "hello.h"
+#include <iostream>
 
-# Copy the compiled binary from the builder stage
-COPY --from=builder /usr/src/app/build/hello_world .
+hello::hello() {}
 
-# Run the binary
-CMD ["./hello_world"]
+hello::~hello() {}
+
+void hello::run() {
+    std::string input;
+    std::cout << "Application is running... Type 'exit' to quit." << std::endl;
+    
+    while (true) {
+        std::cin >> input;
+        if (processInput(input)) {
+            break;
+        }
+    }
+}
+
+bool hello::processInput(const std::string &input) {
+    if (input == "exit") {
+        std::cout << "Exiting application..." << std::endl;
+        return true; // Exit the loop
+    } else {
+        std::cout << "You typed: " << input << std::endl;
+        return false; // Continue running
+    }
+}
+
+
+
+#include "hello.h"
+
+int main() {
+    hello app;
+    app.run();
+    return 0;
+}
+
+
+#include "hello.h"
+#include <gtest/gtest.h>
+
+class helloTest : public ::testing::Test {
+protected:
+    hello app;
+};
+
+TEST_F(helloTest, ProcessInputExit) {
+    EXPECT_TRUE(app.processInput("exit"));
+}
+
+TEST_F(helloTest, ProcessInputOther) {
+    EXPECT_FALSE(app.processInput("hello"));
+}
+
+int main(int argc, char **argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}
